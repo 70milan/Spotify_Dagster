@@ -1,19 +1,39 @@
 from dagster import job, op
 
-from sp_etl.ops.dag_main import extract_spotify_liked_songs,dataframes_transform,load_to_postgres
+from sp_etl.ops.dag_main import extract_spotify_liked_songs,\
+    dataframes_transform,load_to_postgres,s3_upload
 
 @job
 def run_etl_job():
-    song_list, album_list, genre_list, track_features, add, track_ids, artist_id, artist_list_new = extract_spotify_liked_songs()
-    df_original, df_date, df_artists_final, df_unique_genres, df_features = dataframes_transform(song_list=song_list,
-                   album_list=album_list,
-                   genre_list=genre_list,
-                   track_features=track_features,
-                   add=add,
-                   track_ids=track_ids,
-                   artist_id=artist_id,
-                   artist_list_new=artist_list_new)
-    load_to_postgres(df_original, df_date, df_artists_final, df_unique_genres, df_features)
+    artist_list_exploded, song_list, album_list, \
+        artist_list, track_features, add, track_ids, \
+            artist_ids, artist_id, artist_list_new, artists_by_id, \
+    album_id_list, release_date_list, album_image_list, genre_by_artists = extract_spotify_liked_songs()
+    df_features, distinct_genres, \
+            df_album, df_artists, df_tracks, df_track_artist_bridge,\
+                  df_artist_genres_bridge, \
+        df_track_genre_bridge, df_date, df_grand_master = dataframes_transform(
+        artist_list_exploded=artist_list_exploded,
+        song_list=song_list,
+        album_list=album_list,
+        artist_list=artist_list,
+        track_features=track_features,
+        add=add,
+        artist_ids = artist_ids,
+        track_ids=track_ids,
+        artist_id=artist_id,
+        artist_list_new=artist_list_new,
+        artists_by_id=artists_by_id,
+        album_id_list=album_id_list,
+        release_date_list=release_date_list,
+        album_image_list=album_image_list,
+        genre_by_artists=genre_by_artists
+    )
+    load_to_postgres(df_features, distinct_genres, \
+            df_album, df_artists, df_tracks, df_track_artist_bridge,\
+                  df_artist_genres_bridge, \
+        df_track_genre_bridge, df_date)
+    s3_upload(df_grand_master)
 
 
 

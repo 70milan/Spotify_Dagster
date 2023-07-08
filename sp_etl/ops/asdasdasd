@@ -1,8 +1,7 @@
 from dagster import Out, op
 import requests
+from configparser import ConfigParser
 import os
-import spotipy.util as util
-from spotipy.oauth2 import SpotifyClientCredentials
 from spotipy.oauth2 import SpotifyOAuth
 import pandas as pd
 from sqlalchemy import create_engine
@@ -23,8 +22,10 @@ username = config.get('sp_creds', 'username')
 scope = "user-library-read"
 redirect_uri = "http://localhost:7777/callback"
 
-aws_access_key_id =  config.get('aws_creds', 'aws_access_key_id')
-aws_secret_access_key = config.get('aws_creds', 'aws_secret_access_key')
+aws_access_key_id = 'AKIAXZ2AHA47QQWJFNPF'
+aws_secret_access_key = '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'
+
+
 
 
 
@@ -274,11 +275,14 @@ def dataframes_transform(context,artist_list_exploded, song_list, album_list, \
         df_track_genre_bridge, df_date, df_grand_master
 
 
+
+
+
 @op
 def load_to_postgres(context, df_features, distinct_genres, \
             df_album, df_artists, df_tracks, df_track_artist_bridge,\
                   df_artist_genres_bridge, \
-        df_track_genre_bridge, df_date):
+        df_track_genre_bridge, df_date, df_grand_master):
     try:
         engine = postgres_connection()
     except Exception as e:
@@ -307,20 +311,7 @@ def load_to_postgres(context, df_features, distinct_genres, \
     context.log.info("load completed.") 
 
 
-@op 
-def s3_upload(context,df_grand_master):
-    context.log.info("Loading has begun.")
-    s3 = boto3.client('s3', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
 
-    # Set the name of your S3 bucket and the file path where you want to save the CSV file
-    bucket_name = 's3numerone'
-    file_path = 'master_data.csv'
-    # Convert your dataframe to a CSV string
-    csv_buffer = StringIO()
-    df_grand_master.to_csv(csv_buffer, index=False)
-    # Upload the CSV file to the S3 bucket
-    s3.put_object(Body=csv_buffer.getvalue(), Bucket=bucket_name, Key=file_path)
-    context.log.info("load completed.")
 
 '''
 client_id = os.environ.get("SP_CLIENT_ID")
